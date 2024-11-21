@@ -14,20 +14,12 @@ from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-import environ
 
-# Initialise environ
-env = environ.Env()
-environ.Env.read_env()
-
-# Utilise la clé dans le fichier .env
-STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
 
 from decouple import config
-import dj_database_url 
+import dj_database_url
 
-SECRET_KEY = config('SECRET_KEY')
-
+SECRET_KEY = config("SECRET_KEY")
 
 
 # Quick-start development settings - unsuitable for production
@@ -40,9 +32,9 @@ STRIPE_SECRET_KEY = "votre_clé_secrète_stripe"
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config("DEBUG", default=False, cast=bool)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost").split(",")
 
 
 # Application definition
@@ -100,10 +92,17 @@ WSGI_APPLICATION = "mon_projet.wsgi.application"
 #     "HOST": "localhost",  # Database host
 #     "PORT": "5432",  # Database port
 #  }
-# }
-DATABASES ={
-    "default":
+# }from decouple import config
+
+import dj_database_url
+from decouple import config
+
+DATABASES = {
+    "default": dj_database_url.parse(
+        config("DATABASE_URL", default="postgres://user:password@localhost:5432/dbname")
+    )
 }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
@@ -123,7 +122,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/4.1/topics/i18n/
 
@@ -140,24 +138,26 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 # Configuration des fichiers statiques
+# Static files configuration
 STATIC_URL = "/static/"
+STATIC_ROOT = (
+    BASE_DIR / "staticfiles"
+)  # Emplacement des fichiers statiques pour la production
+
+# Pour les fichiers statiques spécifiques à l'application
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
-# Configuration des fichiers médias (pour les uploads, etc.)
+# Media files configuration
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# settings.py
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
-EMAIL_USE_TLS = True  # Utilisez TLS pour sécuriser la connexion
-EMAIL_USE_SSL = False  # Désactivez SSL car nous utilisons TLS
-EMAIL_HOST_USER = "srebroub550@gmail.com"  # Remplacez par votre adresse e-mail
-EMAIL_HOST_PASSWORD = "wdra uppw ogim axlu"  # Remplacez par votre mot de passe
-DEFAULT_FROM_EMAIL = (
-    "srebroub550@gmail.com"  # C'est généralement la même que EMAIL_HOST_USER
-)
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = config("EMAIL_HOST_USER")  # Ajoutez cette clé dans votre .env
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")  # Ajoutez cette clé dans votre .env
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 
 # Default primary key field type
