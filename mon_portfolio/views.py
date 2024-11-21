@@ -71,51 +71,18 @@ def simple_page(request):
     return render(request, "simple_page.html", {"projects": projects})
 
 
-import stripe
-from django.conf import settings
-from django.shortcuts import redirect, get_object_or_404
-from .models import Service
-
-stripe.api_key = settings.STRIPE_SECRET_KEY
-
-
-def create_checkout_session(request, service_id):
-    service = get_object_or_404(Service, id=service_id)
-
-    try:
-        checkout_session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            line_items=[
-                {
-                    "price": service.stripe_price_id,  # ID Stripe Price
-                    "quantity": 1,
-                },
-            ],
-            mode="payment",
-            success_url=request.build_absolute_uri("/?success=true"),
-            cancel_url=request.build_absolute_uri("/?canceled=true"),
-        )
-        return redirect(checkout_session.url)
-    except stripe.error.StripeError as e:
-        print(f"StripeError: {str(e)}")  # Log de l'erreur Stripe
-        return redirect("/?error=true")
-    except Exception as e:
-        print(f"Erreur générale : {str(e)}")  # Log des erreurs générales
-        return redirect("/?error=true")
-
-
 import pandas as pd
 import requests
 from django.shortcuts import render
 from django.http import JsonResponse
-from django.core.mail import send_mail
+
+from groq import Groq
 
 # Initialisation avec clé API
 GROQ_AI_API_KEY = "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"
 
 # Chemin vers le fichier CSV
 csv_file_path = "universities.csv"
-
 # Données statiques des services avec descriptions et prix
 SERVICES = {
     "ui/ux design": {
@@ -172,57 +139,6 @@ def load_csv_data(file_path):
 data = load_csv_data(csv_file_path)
 
 
-# Fonction de calcul de la distance de Levenshtein
-def levenshtein_distance(str1, str2):
-    m = len(str1)
-    n = len(str2)
-    dp = [[0] * (n + 1) for _ in range(m + 1)]
-
-    for i in range(m + 1):
-        dp[i][0] = i
-    for j in range(n + 1):
-        dp[0][j] = j
-
-    for i in range(1, m + 1):
-        for j in range(1, n + 1):
-            if str1[i - 1] == str2[j - 1]:
-                dp[i][j] = dp[i - 1][j - 1]
-            else:
-                dp[i][j] = min(
-                    dp[i - 1][j - 1] + 1,  # Substitution
-                    dp[i - 1][j] + 1,  # Suppression
-                    dp[i][j - 1] + 1,  # Insertion
-                )
-    return dp[m][n]
-
-
-# Fonction pour trouver la meilleure correspondance
-def find_best_match(input_text, responses):
-    threshold = 3  # Tolérance maximale
-    best_match = None
-    min_distance = float("inf")
-
-    normalized_input = input_text.lower().strip()
-    input_words = normalized_input.split()
-
-    for key in responses.keys():
-        key_words = key.lower().strip().split()
-        total_distance = 0
-
-        for input_word in input_words:
-            min_word_distance = float("inf")
-            for key_word in key_words:
-                distance = levenshtein_distance(input_word, key_word)
-                min_word_distance = min(min_word_distance, distance)
-            total_distance += min_word_distance
-
-        if total_distance < min_distance:
-            min_distance = total_distance
-            best_match = key
-
-    return best_match if min_distance <= threshold * len(input_words) else None
-
-
 # Vue principale
 def index(request):
     if request.method == "POST":
@@ -232,7 +148,7 @@ def index(request):
     return render(request, "home.html")
 
 
-# Fonction pour interagir avec Groq AI
+## Fonction pour interagir avec Groq AI
 def query_groq_ai(query):
     url = "https://api.groq.ai/v1/ask"
     headers = {
@@ -254,25 +170,25 @@ def query_groq_ai(query):
         return "Une erreur s'est produite lors de la connexion au service AI."
 
 
+# Génération des réponses
 def generate_response(query):
     query_lower = query.lower().strip()
 
-    # Vérification de la longueur minimale
-    if len(query_lower) < 3:
-        return "Votre requête est trop courte. Veuillez préciser votre demande."
-
     # Vérification des services spécifiques
-    best_service_match = find_best_match(query_lower, SERVICES)
-    if best_service_match:
-        service_details = SERVICES[best_service_match]
-        return (
-            f"Service : {best_service_match}.\n"
-            f"Description : {service_details['description']}\n"
-            f"Prix : {service_details['prix']}"
-        )
+    for service, details in SERVICES.items():
+        if service in query_lower:
+            return (
+                f"Service : {service}.\n"
+                f"Description : {details['description']}\n"
+                f"Prix : {details['prix']}"
+            )
 
     # Demande générale sur les services
-    if "service" in query_lower or "services" in query_lower:
+    if (
+        "service" in query_lower
+        or "services" in query_lower
+        or "autres services" in query_lower
+    ):
         all_services = "\n".join(
             [
                 f"- {service}: {details['description']} (Prix : {details['prix']})"
@@ -289,32 +205,24 @@ def generate_response(query):
 
     # Recherche dans les données CSV
     for row in data:
-        if find_best_match(query_lower, {row["Université"]: None}):
+        if row["Université"] in query_lower:
             return (
                 f"L'université {row['Université']} est située à {row['Adresse']}, "
                 f"{row['Ville']}. Plus d'informations sur leur site : {row['Site Web']}."
             )
 
     # Réponses génériques
-    generic_responses = {
-        "contact": "Vous pouvez me contacter au +212 674156928 ou par email à mohamedrebroub815@gmail.com.",
-        "localisation": "Je suis basé à Casablanca, Maroc.",
-        "hi": "Bonjour ! Comment puis-je vous aider aujourd'hui ?",
-        "hello": "Bonjour ! Comment puis-je vous aider aujourd'hui ?",
-        "bonjour": "Bonjour ! Comment puis-je vous aider aujourd'hui ?",
-        "salut": "Bonjour ! Comment puis-je vous aider aujourd'hui ?",
-    }
-    best_generic_match = find_best_match(query_lower, generic_responses)
-    if best_generic_match:
-        return generic_responses[best_generic_match]
+    if "contact" in query_lower:
+        return "Vous pouvez me contacter au +212 674156928 ou par email à mohamedrebroub815@gmail.com."
+
+    if "localisation" in query_lower:
+        return "Je suis basé à Casablanca, Maroc."
+
+    if any(greeting in query_lower for greeting in ["hi", "hello", "bonjour", "salut"]):
+        return "Bonjour ! Comment puis-je vous aider aujourd'hui ?"
 
     # Utiliser Groq AI pour des questions complexes
-    groq_response = query_groq_ai(query)
-    if groq_response != "Une erreur s'est produite lors de la connexion au service AI.":
-        return groq_response
-
-    # Réponse par défaut en cas d'erreur ou d'absence de correspondance
-    return "Je ne suis pas sûr de comprendre votre demande. Pouvez-vous reformuler ?"
+    return query_groq_ai(query)
 
 
 from django.core.mail import send_mail
