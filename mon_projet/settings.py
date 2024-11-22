@@ -33,6 +33,9 @@ DEBUG = False
 
 ALLOWED_HOSTS = ["mohamed-rebroub.onrender.com", "localhost", "127.0.0.1"]
 
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = True
+
 
 # Application definition
 
@@ -142,7 +145,7 @@ STATIC_ROOT = (
 )  # Emplacement des fichiers statiques pour la production
 
 # Pour les fichiers statiques spécifiques à l'application
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATICFILES_DIRS = [BASE_DIR / "mon_portfolio/static"]
 
 # Media files configuration
 MEDIA_URL = "/media/"
