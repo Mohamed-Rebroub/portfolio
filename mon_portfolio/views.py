@@ -294,7 +294,6 @@ from django.shortcuts import render
 def email_page(request):
     return render(request, "email2.html")
 
-
 def send_email(request):
     if request.method == "POST":
         # Récupérer les données du formulaire
@@ -315,10 +314,8 @@ def send_email(request):
                 recipient_list=["destinataire@example.com"],  # Adresse du destinataire
                 fail_silently=False,
             )
-            return JsonResponse(
-                {"status": "success", "message": "Email envoyé avec succès!"}
-            )
+            return render(request, "email2.html", {"status": "success", "message": "Email envoyé avec succès!"})
         except Exception as e:
-            return JsonResponse({"status": "error", "message": f"Erreur : {e}"})
-
-    return JsonResponse({"status": "error", "message": "Requête invalide"})
+            return render(request, "email2.html", {"status": "error", "message": f"Erreur : {e}"})
+    
+    return render(request, "email2.html", {"status": "error", "message": "Requête invalide"})
