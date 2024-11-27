@@ -283,15 +283,13 @@ def generate_response(query):
     # Réponse par défaut en cas d'erreur ou d'absence de correspondance
     return "Je ne suis pas sûr de comprendre votre demande. Pouvez-vous reformuler ?"
 
-
 from django.core.mail import send_mail
 from django.http import JsonResponse
 from django.shortcuts import render
-
-from django.shortcuts import render
-
+from django.contrib import messages
 
 def email_page(request):
+    # Affichage de la page de formulaire
     return render(request, "email2.html")
 
 def send_email(request):
@@ -314,8 +312,16 @@ def send_email(request):
                 recipient_list=["destinataire@example.com"],  # Adresse du destinataire
                 fail_silently=False,
             )
-            return render(request, "email2.html", {"status": "success", "message": "Email envoyé avec succès!"})
+
+            # Ajouter un message de succès dans le système de messages de Django
+            messages.success(request, "Email envoyé avec succès!")
+
         except Exception as e:
-            return render(request, "email2.html", {"status": "error", "message": f"Erreur : {e}"})
-    
-    return render(request, "email2.html", {"status": "error", "message": "Requête invalide"})
+            # Ajouter un message d'erreur
+            messages.error(request, f"Erreur lors de l'envoi de l'email: {e}")
+
+        # Rediriger vers la même page avec le message de confirmation
+        return render(request, "email2.html")
+
+    # Si la requête n'est pas une méthode POST
+    return JsonResponse({"status": "error", "message": "Requête invalide"})
