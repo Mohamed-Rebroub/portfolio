@@ -312,16 +312,11 @@ def send_email(request):
                 recipient_list=["destinataire@example.com"],  # Adresse du destinataire
                 fail_silently=False,
             )
-
-            # Ajouter un message de succès dans le système de messages de Django
-            messages.success(request, "Email envoyé avec succès!")
-
+            return JsonResponse(
+                {"status": "success", "message": "Email envoyé avec succès!"}
+            )
         except Exception as e:
-            # Ajouter un message d'erreur
-            messages.error(request, f"Erreur lors de l'envoi de l'email: {e}")
+            return JsonResponse({"status": "error", "message": f"Erreur : {e}"})
 
-        # Rediriger vers la même page avec le message de confirmation
-        return render(request, "email2.html")
-
-    # Si la requête n'est pas une méthode POST
     return JsonResponse({"status": "error", "message": "Requête invalide"})
+
