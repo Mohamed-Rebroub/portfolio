@@ -98,8 +98,9 @@ import dj_database_url
 from decouple import config
 
 DATABASES = {
-    "default": dj_database_url.parse(
-        config("DATABASE_URL", default="postgres://user:password@localhost:5432/dbname")
+    "default": dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
     )
 }
 
